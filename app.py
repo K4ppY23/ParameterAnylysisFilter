@@ -122,7 +122,7 @@ if uploaded_file is not None:
     with main_tab2:
         st.header("Wyróżnianie wartości na tle wszystkich danych")
         st.info(
-            "💡 W tym trybie widoczne są WSZYSTKIE dane. Wybrane warunki zostaną oznaczone kolorem na tabeli i wykresie.")
+            "💡 W tym trybie widoczne są WSZYSTKIE dane. Wybrane warunki zostaną oznaczone kolorem na tabeli i wykresie DOPERO po kliknięciu przycisku.")
 
         if 'filter_conditions_t2' not in st.session_state:
             st.session_state.filter_conditions_t2 = [
@@ -173,25 +173,39 @@ if uploaded_file is not None:
 
         exec_t2 = st.button("🚀 Oznacz / Podświetl dane", type="primary", key="exec_t2", use_container_width=True)
 
-        # Wyznaczenie maski logicznej dla całej tabeli
-        mask = (data[time_column] >= pd.to_datetime(start_dt_t2)) & (data[time_column] <= pd.to_datetime(end_dt_t2))
 
-        # Jeśli przycisk kliknięty lub zapytanie jest aktywne
-        if len(st.session_state.filter_conditions_t2) > 0:
-            for c in st.session_state.filter_conditions_t2:
-                col, op, val = c['column'], c['operator'], c['value']
-                if op == ">":
-                    mask &= (data[col] > val)
-                elif op == "<":
-                    mask &= (data[col] < val)
-                elif op == "=":
-                    mask &= (data[col] == val)
-                elif op == ">=":
-                    mask &= (data[col] >= val)
-                elif op == "<=":
-                    mask &= (data[col] <= val)
-                elif op == "!=":
-                    mask &= (data[col] != val)
+        # Funkcja obliczająca maskę logiczną na żądanie
+        def compute_mask_t2():
+            m = (data[time_column] >= pd.to_datetime(start_dt_t2)) & (data[time_column] <= pd.to_datetime(end_dt_t2))
+            if len(st.session_state.filter_conditions_t2) > 0:
+                for c in st.session_state.filter_conditions_t2:
+                    col, op, val = c['column'], c['operator'], c['value']
+                    if op == ">":
+                        m &= (data[col] > val)
+                    elif op == "<":
+                        m &= (data[col] < val)
+                    elif op == "=":
+                        m &= (data[col] == val)
+                    elif op == ">=":
+                        m &= (data[col] >= val)
+                    elif op == "<=":
+                        m &= (data[col] <= val)
+                    elif op == "!=":
+                        m &= (data[col] != val)
+            return m
+
+
+        # ---------------------------------------------------------
+        # KONTROLA STANU DANYCH DLA TAB 2 (TYLKO PO NACIŚNIĘCIU PRZYCISKU)
+        # ---------------------------------------------------------
+        if 'applied_mask_t2' not in st.session_state or len(st.session_state.applied_mask_t2) != len(data):
+            st.session_state.applied_mask_t2 = compute_mask_t2()
+
+        # Obliczamy nową maskę TYLKO w momencie kliknięcia przycisku exec_t2
+        if exec_t2:
+            st.session_state.applied_mask_t2 = compute_mask_t2()
+
+        mask = st.session_state.applied_mask_t2
 
         matched_count = mask.sum()
         st.markdown(
@@ -205,7 +219,6 @@ if uploaded_file is not None:
             df_display.insert(0, "Status_Dopasowania", ["🎯 Dopasowany" if m else "⚪ Standard" for m in mask])
 
 
-            # Funkcja stylująca wiersze w Pandas
             def highlight_matched_rows(row):
                 if row["Status_Dopasowania"] == "🎯 Dopasowany":
                     return ['background-color: rgba(46, 204, 113, 0.25); font-weight: bold'] * len(row)
@@ -221,7 +234,7 @@ if uploaded_file is not None:
 
             fig_t2 = go.Figure()
 
-            # Seria 1: Wszystkie dane (szara ciągła linia tła)
+            # Seria 1: Wszystkie dane (szara linia tła)
             fig_t2.add_trace(go.Scatter(
                 x=data[time_column],
                 y=data[y_col_t2],
@@ -231,7 +244,7 @@ if uploaded_file is not None:
                 marker=dict(color='gray', size=4, opacity=0.5)
             ))
 
-            # Seria 2: Wyselekcjonowane punkty (duże czerwone kropki nanieść na tło)
+            # Seria 2: Wyselekcjonowane punkty (duże czerwone kropki)
             matched_df = data[mask]
             if len(matched_df) > 0:
                 fig_t2.add_trace(go.Scatter(

@@ -4,13 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d58c4628-dee3-46c4-ba25-d3851f4c817b" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/ParameterAnalisys.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    <list default="true" id="d58c4628-dee3-46c4-ba25-d3851f4c817b" name="Changes" comment="Version 2 - Filter Parameters">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,6 +22,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "K4ppY23"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/K4ppY23/ParameterAnylysisFilter.git",
+    "accountId": "a06fff6a-c82e-42d2-81fc-c25350167fd3"
+  }
+}]]></component>
   <component name="ProjectColorInfo"><![CDATA[{
   "associatedIndex": 7,
   "fromUser": false
@@ -68,12 +75,34 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1788197082965</updated>
-      <workItem from="1788197083970" duration="2177000" />
+      <workItem from="1788197083970" duration="2761000" />
     </task>
+    <task id="LOCAL-00001" summary="Version 1 - Filter Parameters">
+      <option name="closed" value="true" />
+      <created>1788199372374</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1788199372375</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Version 2 - Filter Parameters">
+      <option name="closed" value="true" />
+      <created>1788199643480</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1788199643480</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Version 1 - Filter Parameters" />
+    <MESSAGE value="Version 2 - Filter Parameters" />
+    <option name="LAST_COMMIT_MESSAGE" value="Version 2 - Filter Parameters" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
