@@ -62,6 +62,20 @@ def get_default_chart_params(conditions, available_cols):
     return unique_cols if unique_cols else ([available_cols[0]] if available_cols else [])
 
 
+def extract_selected_timestamps(select_event):
+    """Wyciąga zestaw timestampów zaznaczonych na wykresie przez użytkownika."""
+    selected_set = set()
+    if select_event and "selection" in select_event and "points" in select_event["selection"]:
+        for pt in select_event["selection"]["points"]:
+            if "x" in pt:
+                try:
+                    dt_str = str(pd.to_datetime(pt["x"]))
+                    selected_set.add(dt_str)
+                except Exception:
+                    pass
+    return selected_set
+
+
 # -----------------------------------------------------------------------------
 # IMPORT PLIKU CSV
 # -----------------------------------------------------------------------------
@@ -159,91 +173,132 @@ if uploaded_file is not None:
         df_t1 = st.session_state.filtered_df_t1
         st.subheader(f"Wyniki (Znaleziono {len(df_t1)} z {len(data)} rekordów)")
 
-        tab_t1_grid, tab_t1_chart = st.tabs(["📋 Tabela Wyników", "📈 Wykresy i Odczyt Czasowy"])
+        # ---------------------------------------------------------------------
+        # SEKCJA WYKRESU I ODCZYTU CZASOWEGO
+        # ---------------------------------------------------------------------
+        defaults_t1 = get_default_chart_params(st.session_state.filter_conditions_t1, available_columns)
 
-        with tab_t1_grid:
-            st.dataframe(df_t1, use_container_width=True)
+        col_sel, col_mode = st.columns([3, 1])
+        selected_params_t1 = col_sel.multiselect(
+            "Wybierz parametry do wyświetlenia na wykresie:",
+            available_columns,
+            default=defaults_t1,
+            key="multi_y_t1"
+        )
+        chart_mode_t1 = col_mode.radio("Typ wykresu:", ["Subplots (Osobne)", "Połączony (Jedna oś)"], key="mode_t1")
 
-        with tab_t1_chart:
-            defaults_t1 = get_default_chart_params(st.session_state.filter_conditions_t1, available_columns)
+        st.markdown("---")
+        st.caption(
+            "💡 **Interaktywne zaznaczanie:** Użyj narzędzia `Box Select` lub `Lasso Select` w prawym górnym rogu wykresu, aby podświetlić te punkty na pomarańczowo w tabeli poniżej.")
 
-            col_sel, col_mode = st.columns([3, 1])
-            selected_params_t1 = col_sel.multiselect(
-                "Wybierz parametry do wyświetlenia:",
-                available_columns,
-                default=defaults_t1,
-                key="multi_y_t1"
-            )
-            chart_mode_t1 = col_mode.radio("Typ wykresu:", ["Subplots (Osobne)", "Połączony (Jedna oś)"], key="mode_t1")
+        c_input_dt, c_info = st.columns([2, 3])
+        min_t1_time = df_t1[time_column].min() if not df_t1.empty else data[time_column].min()
 
-            # Sekcja wprowadzania daty i godziny dla wskazówki
-            st.markdown("---")
-            c_input_dt, c_info = st.columns([2, 3])
+        user_target_dt_t1 = c_input_dt.datetime_input(
+            "⏱️ Wpisz/wybierz datę i godzinę wskazówki (naciśnij Enter):",
+            value=min_t1_time,
+            key="dt_picker_t1"
+        )
 
-            min_t1_time = df_t1[time_column].min() if not df_t1.empty else data[time_column].min()
-            max_t1_time = df_t1[time_column].max() if not df_t1.empty else data[time_column].max()
+        selected_ts_t1 = set()
+        if selected_params_t1 and not df_t1.empty:
+            time_diffs_t1 = (df_t1[time_column] - pd.to_datetime(user_target_dt_t1)).abs()
+            nearest_idx_t1 = time_diffs_t1.idxmin()
+            found_row_t1 = df_t1.loc[nearest_idx_t1]
+            actual_dt_t1 = found_row_t1[time_column]
 
-            user_target_dt_t1 = c_input_dt.datetime_input(
-                "⏱️ Wpisz/wybierz datę i godzinę wskazówki (naciśnij Enter):",
-                value=min_t1_time,
-                key="dt_picker_t1"
-            )
+            with c_info:
+                st.info(f"📍 **Wskazówka na:** `{pd.to_datetime(actual_dt_t1).strftime('%Y-%m-%d %H:%M:%S')}`")
 
-            if selected_params_t1 and not df_t1.empty:
-                # Wyszukiwanie odczytu w tabeli dla wpisanej godziny
-                time_diffs_t1 = (df_t1[time_column] - pd.to_datetime(user_target_dt_t1)).abs()
-                nearest_idx_t1 = time_diffs_t1.idxmin()
-                found_row_t1 = df_t1.loc[nearest_idx_t1]
-                actual_dt_t1 = found_row_t1[time_column]
-
-                with c_info:
-                    st.info(f"📍 **Wskazówka na:** `{pd.to_datetime(actual_dt_t1).strftime('%Y-%m-%d %H:%M:%S')}`")
-
-                # Rysowanie wykresu bez kropek (mode='lines')
-                if chart_mode_t1 == "Subplots (Osobne)":
-                    fig_t1 = make_subplots(
-                        rows=len(selected_params_t1), cols=1,
-                        shared_xaxes=True, vertical_spacing=0.08,
-                        subplot_titles=[f"Przebieg: {p}" for p in selected_params_t1]
+            # Tworzenie wykresu Plotly (linie bez punktów)
+            if chart_mode_t1 == "Subplots (Osobne)":
+                fig_t1 = make_subplots(
+                    rows=len(selected_params_t1), cols=1,
+                    shared_xaxes=True, vertical_spacing=0.08,
+                    subplot_titles=[f"Przebieg: {p}" for p in selected_params_t1]
+                )
+                for idx_p, param in enumerate(selected_params_t1, start=1):
+                    fig_t1.add_trace(
+                        go.Scatter(x=df_t1[time_column], y=df_t1[param], mode='lines', name=param, line=dict(width=2)),
+                        row=idx_p, col=1
                     )
-                    for idx_p, param in enumerate(selected_params_t1, start=1):
-                        fig_t1.add_trace(
-                            go.Scatter(x=df_t1[time_column], y=df_t1[param], mode='lines', name=param,
-                                       line=dict(width=2)),
-                            row=idx_p, col=1
-                        )
-                    fig_t1.add_vline(x=str(actual_dt_t1), line_width=2, line_dash="dash", line_color="#FF1744")
-                    fig_t1.update_layout(height=280 * len(selected_params_t1), hovermode="x unified")
-                else:
-                    norm_t1 = st.checkbox("Normalizuj wartości (0 - 100%)", key="norm_t1")
-                    fig_t1 = go.Figure()
-                    for param in selected_params_t1:
-                        y_data = df_t1[param]
-                        if norm_t1 and y_data.max() != y_data.min():
-                            y_plot = (y_data - y_data.min()) / (y_data.max() - y_data.min()) * 100
-                            ht = f"<b>{param}</b>: %{{customdata:.2f}}<br>Znorm.: %{{y:.1f}}%<extra></extra>"
-                        else:
-                            y_plot = y_data
-                            ht = f"<b>{param}</b>: %{{y:.2f}}<extra></extra>"
+                fig_t1.add_vline(x=str(actual_dt_t1), line_width=2, line_dash="dash", line_color="#FF1744")
+                fig_t1.update_layout(height=280 * len(selected_params_t1), hovermode="x unified")
+            else:
+                norm_t1 = st.checkbox("Normalizuj wartości (0 - 100%)", key="norm_t1")
+                fig_t1 = go.Figure()
+                for param in selected_params_t1:
+                    y_data = df_t1[param]
+                    if norm_t1 and y_data.max() != y_data.min():
+                        y_plot = (y_data - y_data.min()) / (y_data.max() - y_data.min()) * 100
+                        ht = f"<b>{param}</b>: %{{customdata:.2f}}<br>Znorm.: %{{y:.1f}}%<extra></extra>"
+                    else:
+                        y_plot = y_data
+                        ht = f"<b>{param}</b>: %{{y:.2f}}<extra></extra>"
 
-                        fig_t1.add_trace(
-                            go.Scatter(x=df_t1[time_column], y=y_plot, mode='lines', name=param, customdata=y_data,
-                                       hovertemplate=ht))
+                    fig_t1.add_trace(
+                        go.Scatter(x=df_t1[time_column], y=y_plot, mode='lines', name=param, customdata=y_data,
+                                   hovertemplate=ht))
 
-                    fig_t1.add_vline(x=str(actual_dt_t1), line_width=2, line_dash="dash", line_color="#FF1744")
-                    fig_t1.update_layout(height=500, hovermode="x unified",
-                                         legend=dict(title="Kliknij, aby ukryć/pokazać"))
+                fig_t1.add_vline(x=str(actual_dt_t1), line_width=2, line_dash="dash", line_color="#FF1744")
+                fig_t1.update_layout(height=500, hovermode="x unified", legend=dict(title="Kliknij, aby ukryć/pokazać"))
 
-                st.plotly_chart(fig_t1, use_container_width=True)
+            # Zdarzenie zaznaczenia na wykresie
+            select_event_t1 = st.plotly_chart(
+                fig_t1,
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode=["box", "lasso"],
+                key="chart_plotly_t1"
+            )
+            selected_ts_t1 = extract_selected_timestamps(select_event_t1)
 
-                # Panel z wynikami parametrów w miejscu wskazówki
-                st.markdown(
-                    f"##### 📊 Odczyt wybranych parametrów z godziny `{pd.to_datetime(actual_dt_t1).strftime('%Y-%m-%d %H:%M:%S')}`:")
-                readout_cols = st.columns(min(len(selected_params_t1), 4))
-                for i, param in enumerate(selected_params_t1):
-                    val = found_row_t1[param]
-                    readout_cols[i % 4].metric(label=param,
-                                               value=f"{val:.2f}" if isinstance(val, (int, float)) else str(val))
+            # Panel odczytu z godziny wskazówki
+            st.markdown(
+                f"##### 📊 Odczyt wybranych parametrów z godziny `{pd.to_datetime(actual_dt_t1).strftime('%Y-%m-%d %H:%M:%S')}`:")
+            readout_cols = st.columns(min(len(selected_params_t1), 4))
+            for i, param in enumerate(selected_params_t1):
+                val = found_row_t1[param]
+                readout_cols[i % 4].metric(label=param,
+                                           value=f"{val:.2f}" if isinstance(val, (int, float)) else str(val))
+
+        # ---------------------------------------------------------------------
+        # STYLOWY WIDOK TABELARYCZNY Z PODŚWIETLENIEM ZAZNACZENIA
+        # ---------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 📋 Tabela Wyników")
+        if selected_ts_t1:
+            st.success(
+                f"🔍 **Zaznaczono {len(selected_ts_t1)} punktów na wykresie** (podświetlone na pomarańczowo w tabeli)")
+
+        df_t1_disp = df_t1.copy()
+
+
+        def style_tryb1_table(row):
+            ts_str = str(pd.to_datetime(row[time_column]))
+            is_selected = ts_str in selected_ts_t1
+            if is_selected:
+                # Zaznaczone na wykresie -> Akcent bursztynowy / pomarańczowy
+                return [
+                    'background-color: #FFF3E0; '
+                    'color: #D35400; '
+                    'font-weight: bold; '
+                    'border: 2px solid #E67E22;'
+                    for _ in row
+                ]
+            else:
+                # Estetyczny niebieskawo-szary odcień dla standardowych wierszy tabeli
+                bg_color = '#F4F6F7' if (row.name % 2 == 0) else '#EBF5FB'
+                return [
+                    f'background-color: {bg_color}; '
+                    'color: #1B4F72; '
+                    'border: 1px solid #D5D8DC;'
+                    for _ in row
+                ]
+
+
+        styled_t1 = df_t1_disp.style.apply(style_tryb1_table, axis=1)
+        st.dataframe(styled_t1, use_container_width=True)
 
     # =========================================================================
     # ZAKŁADKA 2: PODŚWIETLANIE I OZNACZANIE NA PEŁNYCH DANYCH
@@ -251,7 +306,7 @@ if uploaded_file is not None:
     with main_tab2:
         st.header("Wyróżnianie wartości na tle wszystkich danych")
         st.info(
-            "💡 W tym trybie widoczne są WSZYSTKIE dane. Przefiltrowane rekordy zostaną wyróżnione ramką w tabeli oraz wskazówką na wykresie.")
+            "💡 W tym trybie widoczne są WSZYSTKIE dane. Przefiltrowane rekordy oraz punkty zaznaczone na wykresie zostaną podświetlone w tabeli poniżej.")
 
         if 'filter_conditions_t2' not in st.session_state:
             st.session_state.filter_conditions_t2 = [
@@ -324,123 +379,161 @@ if uploaded_file is not None:
         matched_count = mask_t2.sum()
 
         st.markdown(
-            f"**Wyróżniono {matched_count} z {len(data)} rekordów** (Dopasowanie: {matched_count / len(data) * 100:.1f}%)")
-
-        tab_t2_grid, tab_t2_chart = st.tabs([
-            "📋 Tabela z Wyrazistym Obramowaniem",
-            "📈 Wykres z Wskazówką Czasową"
-        ])
+            f"**Wyróżniono {matched_count} z {len(data)} rekordów przez warunki** (Dopasowanie: {matched_count / len(data) * 100:.1f}%)")
 
         # ---------------------------------------------------------------------
-        # TABELA Z WYRAZISTYM OBRAMOWANIEM KOMÓREK
+        # WIDOK WYKRESU I ODZYTU W JEDNYM WIDOKU
         # ---------------------------------------------------------------------
-        with tab_t2_grid:
-            df_display = data.copy()
-            df_display.insert(0, "Status", ["🎯 SPEŁNIA WARUNKI" if m else "⚪ STANDARD" for m in mask_t2])
+        defaults_t2 = get_default_chart_params(st.session_state.filter_conditions_t2, available_columns)
+
+        col_sel_2, col_mode_2 = st.columns([3, 1])
+        selected_params_t2 = col_sel_2.multiselect(
+            "Wybierz parametry do wyświetlenia na wykresie:",
+            available_columns,
+            default=defaults_t2,
+            key="multi_y_t2"
+        )
+        chart_mode_t2 = col_mode_2.radio("Typ wykresu:", ["Subplots (Osobne)", "Połączony (Jedna oś)"], key="mode_t2")
+
+        st.markdown("---")
+        st.caption(
+            "💡 **Interaktywne zaznaczanie:** Użyj narzędzia `Box Select` lub `Lasso Select` na wykresie, aby równocześnie podświetlić te serie w tabeli poniżej odrębnym kolorem!")
+
+        c_input_dt2, c_info2 = st.columns([2, 3])
+        user_target_dt_t2 = c_input_dt2.datetime_input(
+            "⏱️ Wpisz/wybierz datę i godzinę wskazówki (naciśnij Enter):",
+            value=data[time_column].min(),
+            key="dt_picker_t2"
+        )
+
+        selected_ts_t2 = set()
+        if selected_params_t2:
+            time_diffs_t2 = (data[time_column] - pd.to_datetime(user_target_dt_t2)).abs()
+            nearest_idx_t2 = time_diffs_t2.idxmin()
+            found_row_t2 = data.loc[nearest_idx_t2]
+            actual_dt_t2 = found_row_t2[time_column]
+            is_matched_dt = mask_t2.iloc[nearest_idx_t2]
+
+            with c_info2:
+                status_text = "🎯 SPEŁNIA WARUNKI" if is_matched_dt else "⚪ STAN STANDARDOWY"
+                st.info(
+                    f"📍 **Wskazówka na:** `{pd.to_datetime(actual_dt_t2).strftime('%Y-%m-%d %H:%M:%S')}` | **Status:** `{status_text}`")
+
+            # Wykres Plotly
+            if chart_mode_t2 == "Subplots (Osobne)":
+                fig_t2 = make_subplots(
+                    rows=len(selected_params_t2), cols=1,
+                    shared_xaxes=True, vertical_spacing=0.08,
+                    subplot_titles=[f"Przebieg: {p}" for p in selected_params_t2]
+                )
+                for idx_p, param in enumerate(selected_params_t2, start=1):
+                    fig_t2.add_trace(
+                        go.Scatter(x=data[time_column], y=data[param], mode='lines', name=param, line=dict(width=2)),
+                        row=idx_p, col=1
+                    )
+                fig_t2.add_vline(x=str(actual_dt_t2), line_width=2, line_dash="dash", line_color="#FF1744")
+                fig_t2.update_layout(height=300 * len(selected_params_t2), hovermode="x unified")
+            else:
+                norm_t2 = st.checkbox("Normalizuj wartości (0 - 100%)", key="norm_t2")
+                fig_t2 = go.Figure()
+                for param in selected_params_t2:
+                    y_all = data[param]
+                    if norm_t2 and y_all.max() != y_all.min():
+                        y_plot_all = (y_all - y_all.min()) / (y_all.max() - y_all.min()) * 100
+                        ht_all = f"<b>{param}</b>: %{{customdata:.2f}}<br>Znorm.: %{{y:.1f}}%<extra></extra>"
+                    else:
+                        y_plot_all = y_all
+                        ht_all = f"<b>{param}</b>: %{{y:.2f}}<extra></extra>"
+
+                    fig_t2.add_trace(go.Scatter(
+                        x=data[time_column], y=y_plot_all, mode='lines', name=param,
+                        customdata=y_all, hovertemplate=ht_all
+                    ))
+
+                fig_t2.add_vline(x=str(actual_dt_t2), line_width=2, line_dash="dash", line_color="#FF1744")
+                fig_t2.update_layout(height=520, hovermode="x unified", legend=dict(title="Kliknij, aby ukryć/pokazać"))
+
+            select_event_t2 = st.plotly_chart(
+                fig_t2,
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode=["box", "lasso"],
+                key="chart_plotly_t2"
+            )
+            selected_ts_t2 = extract_selected_timestamps(select_event_t2)
+
+            # Panel odczytu z godziny wskazówki
+            st.markdown(
+                f"##### 📊 Odczyt wszystkich wybranych parametrów z godziny `{pd.to_datetime(actual_dt_t2).strftime('%Y-%m-%d %H:%M:%S')}`:")
+            readout_cols2 = st.columns(min(len(selected_params_t2), 4))
+            for i, param in enumerate(selected_params_t2):
+                val = found_row_t2[param]
+                readout_cols2[i % 4].metric(label=param,
+                                            value=f"{val:.2f}" if isinstance(val, (int, float)) else str(val))
+
+        # ---------------------------------------------------------------------
+        # TABELA Z MULTI-KOLOROWYM PODŚWIETLANIEM (FILTR + ZAZNACZENIE Z WYKRESU)
+        # ---------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 📋 Tabela z Wyróżnionymi i Zaznaczonymi Danymi")
+
+        df_display = data.copy()
+
+        status_list = []
+        for i, m in enumerate(mask_t2):
+            ts_str = str(pd.to_datetime(df_display.iloc[i][time_column]))
+            is_sel = ts_str in selected_ts_t2
+
+            if m and is_sel:
+                status_list.append("🎯 SPEŁNIA + 🔍 ZAZNACZONE")
+            elif is_sel:
+                status_list.append("🔍 ZAZNACZONE NA WYKRESIE")
+            elif m:
+                status_list.append("🎯 SPEŁNIA WARUNKI")
+            else:
+                status_list.append("⚪ STANDARD")
+
+        df_display.insert(0, "Status", status_list)
 
 
-            def style_high_contrast_v3(row):
-                if row["Status"] == "🎯 SPEŁNIA WARUNKI":
-                    return [
-                        'background-color: #E8F5E9; '
-                        'color: #1B5E20; '
-                        'font-weight: bold; '
-                        'border: 2px solid #2E7D32;'
-                        for _ in row
-                    ]
+        def style_multi_highlight(row):
+            st_val = row["Status"]
+            if st_val == "🎯 SPEŁNIA + 🔍 ZAZNACZONE":
+                # Fioletowy / Purpurowy - Synergia filtra i zaznaczenia na wykresie
+                return [
+                    'background-color: #F3E5F5; '
+                    'color: #4A148C; '
+                    'font-weight: bold; '
+                    'border: 2px solid #8E24AA;'
+                    for _ in row
+                ]
+            elif st_val == "🔍 ZAZNACZONE NA WYKRESIE":
+                # Bursztynowy / Pomarańczowy - Tylko zaznaczenie z wykresu
+                return [
+                    'background-color: #FFF3E0; '
+                    'color: #E65100; '
+                    'font-weight: bold; '
+                    'border: 2px solid #FB8C00;'
+                    for _ in row
+                ]
+            elif st_val == "🎯 SPEŁNIA WARUNKI":
+                # Wyrazisty Ciemnozielony - Spełniony warunek filtra
+                return [
+                    'background-color: #E8F5E9; '
+                    'color: #1B5E20; '
+                    'font-weight: bold; '
+                    'border: 2px solid #2E7D32;'
+                    for _ in row
+                ]
+            else:
+                # Standardowy neutralny wiersz
                 return [
                     'background-color: #FAFAFA; '
-                    'color: #757575; '
+                    'color: #616161; '
                     'border: 1px solid #E0E0E0;'
                     for _ in row
                 ]
 
 
-            styled_df = df_display.style.apply(style_high_contrast_v3, axis=1)
-            st.dataframe(styled_df, use_container_width=True)
-
-        # ---------------------------------------------------------------------
-        # WYKRES OVERLAY Z WSKAZÓWKĄ CZASOWĄ I ODCZYTEM
-        # ---------------------------------------------------------------------
-        with tab_t2_chart:
-            defaults_t2 = get_default_chart_params(st.session_state.filter_conditions_t2, available_columns)
-
-            col_sel_2, col_mode_2 = st.columns([3, 1])
-            selected_params_t2 = col_sel_2.multiselect(
-                "Wybierz parametry do wyświetlenia na wykresie:",
-                available_columns,
-                default=defaults_t2,
-                key="multi_y_t2"
-            )
-            chart_mode_t2 = col_mode_2.radio("Typ wykresu:", ["Subplots (Osobne)", "Połączony (Jedna oś)"],
-                                             key="mode_t2")
-
-            # Sekcja wprowadzania daty i godziny dla wskazówki
-            st.markdown("---")
-            c_input_dt2, c_info2 = st.columns([2, 3])
-
-            user_target_dt_t2 = c_input_dt2.datetime_input(
-                "⏱️ Wpisz/wybierz datę i godzinę wskazówki (naciśnij Enter):",
-                value=data[time_column].min(),
-                key="dt_picker_t2"
-            )
-
-            if selected_params_t2:
-                # Wyszukiwanie najbliższego odczytu w bazie danych
-                time_diffs_t2 = (data[time_column] - pd.to_datetime(user_target_dt_t2)).abs()
-                nearest_idx_t2 = time_diffs_t2.idxmin()
-                found_row_t2 = data.loc[nearest_idx_t2]
-                actual_dt_t2 = found_row_t2[time_column]
-                is_matched_dt = mask_t2.iloc[nearest_idx_t2]
-
-                with c_info2:
-                    status_text = "🎯 SPEŁNIA WARUNKI" if is_matched_dt else "⚪ STAN STANDARDOWY"
-                    st.info(
-                        f"📍 **Wskazówka na:** `{pd.to_datetime(actual_dt_t2).strftime('%Y-%m-%d %H:%M:%S')}` | **Status:** `{status_text}`")
-
-                # Generowanie wykresu bez kropek (mode='lines')
-                if chart_mode_t2 == "Subplots (Osobne)":
-                    fig_t2 = make_subplots(
-                        rows=len(selected_params_t2), cols=1,
-                        shared_xaxes=True, vertical_spacing=0.08,
-                        subplot_titles=[f"Przebieg: {p}" for p in selected_params_t2]
-                    )
-                    for idx_p, param in enumerate(selected_params_t2, start=1):
-                        fig_t2.add_trace(
-                            go.Scatter(x=data[time_column], y=data[param], mode='lines', name=param,
-                                       line=dict(width=2)),
-                            row=idx_p, col=1
-                        )
-                    fig_t2.add_vline(x=str(actual_dt_t2), line_width=2, line_dash="dash", line_color="#FF1744")
-                    fig_t2.update_layout(height=300 * len(selected_params_t2), hovermode="x unified")
-                else:
-                    norm_t2 = st.checkbox("Normalizuj wartości (0 - 100%)", key="norm_t2")
-                    fig_t2 = go.Figure()
-                    for param in selected_params_t2:
-                        y_all = data[param]
-                        if norm_t2 and y_all.max() != y_all.min():
-                            y_plot_all = (y_all - y_all.min()) / (y_all.max() - y_all.min()) * 100
-                            ht_all = f"<b>{param}</b>: %{{customdata:.2f}}<br>Znorm.: %{{y:.1f}}%<extra></extra>"
-                        else:
-                            y_plot_all = y_all
-                            ht_all = f"<b>{param}</b>: %{{y:.2f}}<extra></extra>"
-
-                        fig_t2.add_trace(go.Scatter(
-                            x=data[time_column], y=y_plot_all, mode='lines', name=param,
-                            customdata=y_all, hovertemplate=ht_all
-                        ))
-
-                    fig_t2.add_vline(x=str(actual_dt_t2), line_width=2, line_dash="dash", line_color="#FF1744")
-                    fig_t2.update_layout(height=520, hovermode="x unified",
-                                         legend=dict(title="Kliknij, aby ukryć/pokazać"))
-
-                st.plotly_chart(fig_t2, use_container_width=True)
-
-                # Panel z wynikami parametrów w miejscu wskazówki
-                st.markdown(
-                    f"##### 📊 Odczyt wszystkich wybranych parametrów z godziny `{pd.to_datetime(actual_dt_t2).strftime('%Y-%m-%d %H:%M:%S')}`:")
-                readout_cols2 = st.columns(min(len(selected_params_t2), 4))
-                for i, param in enumerate(selected_params_t2):
-                    val = found_row_t2[param]
-                    readout_cols2[i % 4].metric(label=param,
-                                                value=f"{val:.2f}" if isinstance(val, (int, float)) else str(val))
+        styled_t2 = df_display.style.apply(style_multi_highlight, axis=1)
+        st.dataframe(styled_t2, use_container_width=True)

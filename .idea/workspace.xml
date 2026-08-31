@@ -78,7 +78,7 @@
       <updated>1788197082965</updated>
       <workItem from="1788197083970" duration="6584000" />
       <workItem from="1788204050115" duration="49000" />
-      <workItem from="1788204109869" duration="661000" />
+      <workItem from="1788204109869" duration="1104000" />
     </task>
     <task id="LOCAL-00001" summary="Version 1 - Filter Parameters">
       <option name="closed" value="true" />
@@ -152,7 +152,15 @@
       <option name="project" value="LOCAL" />
       <updated>1788204022875</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Version 4 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters">
+      <option name="closed" value="true" />
+      <created>1788204908510</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1788204908510</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
