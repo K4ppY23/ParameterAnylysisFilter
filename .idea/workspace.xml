@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d58c4628-dee3-46c4-ba25-d3851f4c817b" name="Changes" comment="Version 3 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters">
+    <list default="true" id="d58c4628-dee3-46c4-ba25-d3851f4c817b" name="Changes" comment="Version 4 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters">
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -75,7 +75,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1788197082965</updated>
-      <workItem from="1788197083970" duration="6000000" />
+      <workItem from="1788197083970" duration="6130000" />
     </task>
     <task id="LOCAL-00001" summary="Version 1 - Filter Parameters">
       <option name="closed" value="true" />
@@ -125,7 +125,15 @@
       <option name="project" value="LOCAL" />
       <updated>1788203088118</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Version 4 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters">
+      <option name="closed" value="true" />
+      <created>1788203479007</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1788203479007</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -135,7 +143,8 @@
     <MESSAGE value="Version 1 - Filter Parameters" />
     <MESSAGE value="Version 2 - Filter Parameters" />
     <MESSAGE value="Version 3 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters" />
-    <option name="LAST_COMMIT_MESSAGE" value="Version 3 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters" />
+    <MESSAGE value="Version 4 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters" />
+    <option name="LAST_COMMIT_MESSAGE" value="Version 4 - Filter Parameters Advanced&#10;&#10;better data display and more advanced filters" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
